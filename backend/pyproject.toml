@@ -12,7 +12,7 @@ dependencies = [
     "pydantic>=2.10.5",
     "sam-2",
     "segment-anything",
-    "torch>=2.5.1",
+    "torch==2.5.1",
     "torchvision>=0.20.1",
 ]
 

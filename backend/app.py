@@ -3,7 +3,7 @@ from typing import List
 import cv2
 import gradio as gr
 import numpy as np
-from inference import SamPredictor, get_sam_predictor, run_inference
+from inference import get_sam_predictor, run_inference
 
 # points color and marker
 COLORS = [(255, 0, 0), (0, 255, 0)]
@@ -30,7 +30,7 @@ def overlay_mask(image: np.ndarray, mask: np.ndarray, alpha: float = 0.5):
     return cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
 
 
-def select_point(predictor: SamPredictor,
+def select_point(predictor,
                  original_img: np.ndarray,
                  display_img: np.ndarray,
                  multi_object: List,

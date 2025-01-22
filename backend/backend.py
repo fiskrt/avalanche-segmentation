@@ -1,12 +1,16 @@
 import os
 from typing import List, Optional
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from PIL import Image
 from pydantic import BaseModel
 import cv2
 import numpy as np
-from inference import SamPredictor, get_sam_predictor
+from classifiers import predict_avalanche_type, predict_spam
+from inference import get_sam_predictor
 import base64
+import io
 
 app = FastAPI()
 
@@ -52,14 +56,48 @@ def overlay_mask(image: np.ndarray, mask: np.ndarray, alpha: float = 0.5):
     return cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
 
 
+
 @app.post("/spamcheck")
-async def upload():
-    # we get the image in bs64 decode it.
-    # we check if it's spam with a model
-    # 1) if it's spam we return error
-    # 2) if it's good we run segmentation model (mauro)
-    # return that image with suggested segmentation
-    ...
+async def spam_classify_image(file: UploadFile = File(...)):
+    try:
+        # Ensure the uploaded file is an image
+        if not file.content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image.")
+
+        # Read image file
+        image_data = await file.read()
+        image = Image.open(io.BytesIO(image_data)).convert("RGB")
+
+        # Classify image
+        predicted_class = predict_spam(image)
+
+        # return true or false
+        return JSONResponse(content={"spam": predicted_class == 0})
+
+    except HTTPException as e:
+        return JSONResponse(content={"error": e.detail}, status_code=e.status_code)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.post("/checkavalanchetype")
+async def classify_avalanche_type(file: UploadFile = File(...)):
+    try:
+        # Read image file
+        image_data = await file.read()
+        image = Image.open(io.BytesIO(image_data)).convert("RGB")
+
+        # Classify image
+        predicted_class = predict_avalanche_type(image)
+
+        # return true or false
+        return JSONResponse(content={"avalanche_type": predicted_class})
+
+    except HTTPException as e:
+        return JSONResponse(content={"error": e.detail}, status_code=e.status_code)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
 
 @app.post("/upload")
 async def upload_image(file: UploadFile = File(...)):

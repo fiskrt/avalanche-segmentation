@@ -27,13 +27,16 @@ export default function Home() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [additionalPrompt, setAdditionalPrompt] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [isOpenType, setIsOpenType] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
   const [clickCoordinates, setClickCoordinates] = useState<ClickCoordinates | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [isSpam, setIsSpam] = useState(false);
   const [isImageApproved, setIsImageApproved] = useState<boolean | null>(null);
   const [isSpamCheckComplete, setIsSpamCheckComplete] = useState(false);
-  const [uploadedImage, setUploadedImage] = useState<FileList | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
+  const [avalancheType, setAvalancheType] = useState<string | null>(null);
 
 
   // Add these handler functions before the return statement
@@ -48,9 +51,50 @@ export default function Home() {
 
   // Add this function before handleFileChange
   const checkIfSpam = async (file: File): Promise<boolean> => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return Math.random() < 0.5;
+
+    // send the coordinates to the backend
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${BACKEND_URI}/spamcheck/`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to upload files');
+    }
+    const data = await response.json();
+    console.log(data);
+    return data.spam
   };
+
+  const predictAvalancheType = async (file: File) => {
+    // send the coordinates to the backend
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${BACKEND_URI}/checkavalanchetype/`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to upload files');
+    }
+    const data = await response.json();
+    console.log(data);
+
+    // map avalanche_type (0,1,2,3) to the avalancheType array
+    const avalancheType = possibleavalancheTypes[data.avalanche_type];
+    console.log(avalancheType);
+    return avalancheType;
+
+  }
+  const possibleavalancheTypes = [
+    "none",
+    'slab',
+    'loose',
+    'glide'
+  ];
 
   const options = [
     "Small",
@@ -80,7 +124,9 @@ export default function Home() {
 
     // send the coordinates to the backend
     const formData = new FormData();
-    formData.append('files', uploadedImage?.[0] as Blob);
+    if (uploadedImage) {
+      formData.append('file', uploadedImage);
+    }
 
 
     const response = await fetch(`${BACKEND_URI}/image-to-sam/`, {
@@ -99,7 +145,7 @@ export default function Home() {
     const files = event.target.files;
     if (!files) return;
 
-    setUploadedImage(files);
+    setUploadedImage(files[0]);
 
     setIsLoading(true);
     setClickCoordinates(null); // Reset coordinates when new image is uploaded
@@ -123,6 +169,13 @@ export default function Home() {
       setGeneratedPages([]);
       return;
     }
+
+    // Send the image to the backend to predict avalanche type
+    const possibleAvalancheType = await predictAvalancheType(file);
+    if (possibleAvalancheType) {
+      setAvalancheType(possibleAvalancheType);
+    }
+
 
     try {
       // Simulate API response to check spam image
@@ -293,7 +346,60 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="relative inline-block text-left">
+                  <div className="relative text-center flex justify-center items-center">
+                    <p className="mb-0 mr-2 text-gray-700 font-bold">
+                      Our model predicted Avalanche type as
+                    </p>
+                    <span className="text-blue-400">{avalancheType}</span>
+                  </div>
+
+                  <div className="relative text-center flex justify-center items-center">
+
+                    <button
+                      onClick={() => setIsOpenType(!isOpenType)}
+                      className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      {selectedType || "Select Avalanche Type"}
+                      <svg
+                        className="-mr-1 ml-2 h-5 w-5"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                    {isOpenType && (
+                      <div
+                        className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
+                        role="menu"
+                      >
+                        <div className="py-1" role="none">
+                          {possibleavalancheTypes.map((option, index) => (
+                            <button
+                              key={index}
+                              onClick={() => {
+                                setSelectedType(option);
+                                setIsOpenType(false);
+                              }}
+                              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+
+                  <div className="relative text-center flex justify-center items-center">
+
                     <button
                       onClick={() => setIsOpen(!isOpen)}
                       className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
