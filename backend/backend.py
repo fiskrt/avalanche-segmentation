@@ -51,11 +51,23 @@ def overlay_mask(image: np.ndarray, mask: np.ndarray, alpha: float = 0.5):
         overlay[mask > 0] = [255, 0, 0]  # Red overlay for mask
     return cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
 
+
+@app.post("/spamcheck")
+async def upload():
+    # we get the image in bs64 decode it.
+    # we check if it's spam with a model
+    # 1) if it's spam we return error
+    # 2) if it's good we run segmentation model (mauro)
+    # return that image with suggested segmentation
+    ...
+
 @app.post("/upload")
 async def upload_image(file: UploadFile = File(...)):
+    # spam check...
+
+
+
     global current_image, display_image, masks, points
-    
-    # Reset state
     masks = []
     points = []
     
@@ -63,12 +75,8 @@ async def upload_image(file: UploadFile = File(...)):
     contents = await file.read()
     nparr = np.frombuffer(contents, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    
-    # Store images
     current_image = img.copy()
     display_image = img.copy()
-    
-    # Set image in predictor
     predictor.set_image(current_image)
     
     return {"image": encode_image(display_image)}
