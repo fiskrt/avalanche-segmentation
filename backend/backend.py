@@ -1,5 +1,4 @@
-import os
-from typing import List, Optional
+from typing import List 
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -8,9 +7,10 @@ from pydantic import BaseModel
 import cv2
 import numpy as np
 from classifiers import predict_avalanche_type, predict_spam
-from inference import get_sam_predictor
+from inference import get_sam_predictor 
 import base64
 import io
+from sam import select_point
 
 app = FastAPI()
 
@@ -23,17 +23,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global state
-predictor = get_sam_predictor()
-current_image = None
-display_image = None
-masks = []
-points = []
+# Global states
+predictor = None
+# IDEA: Just save the original image and whenever we show the image
+# we apply the 'counter' number of transformations to it
+original_image = None
+# keeps track of how many masks there are in the image
+counter = 0
 
 class Point(BaseModel):
     x: int
     y: int
-    label: int  # 1 for foreground, 0 for background
 
 def encode_image(image_array: np.ndarray) -> str:
     """Convert numpy array to base64 string."""
@@ -55,8 +55,6 @@ def overlay_mask(image: np.ndarray, mask: np.ndarray, alpha: float = 0.5):
         overlay[mask > 0] = [255, 0, 0]  # Red overlay for mask
     return cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
 
-
-
 @app.post("/spamcheck")
 async def spam_classify_image(file: UploadFile = File(...)):
     try:
@@ -70,6 +68,11 @@ async def spam_classify_image(file: UploadFile = File(...)):
 
         # Classify image
         predicted_class = predict_spam(image)
+        # If image is not spam we save it and add it to predictor
+        if predicted_class != 0:
+            global predictor, original_image
+            original_image=image
+            predictor = get_sam_predictor(device='cpu', image=original_image)
 
         # return true or false
         return JSONResponse(content={"spam": predicted_class == 0})
@@ -86,9 +89,10 @@ async def classify_avalanche_type(file: UploadFile = File(...)):
         # Read image file
         image_data = await file.read()
         image = Image.open(io.BytesIO(image_data)).convert("RGB")
-
+        
         # Classify image
         predicted_class = predict_avalanche_type(image)
+        
 
         # return true or false
         return JSONResponse(content={"avalanche_type": predicted_class})
@@ -101,13 +105,9 @@ async def classify_avalanche_type(file: UploadFile = File(...)):
 
 @app.post("/upload")
 async def upload_image(file: UploadFile = File(...)):
-    # spam check...
-
-
-
-    global current_image, display_image, masks, points
-    masks = []
-    points = []
+    # We save the image in a global variable
+    # we set the image to SAM model predictor.set_image(img)
+    global original_image
     
     # Read and process image
     contents = await file.read()
@@ -120,31 +120,25 @@ async def upload_image(file: UploadFile = File(...)):
     return {"image": encode_image(display_image)}
 
 @app.post("/add_point")
-async def add_point(point: Point, multi_object: bool = False):
-    global display_image, masks, points
-    
-    # Add point to list
-    points.append((point.x, point.y))
-    
-    # Run inference with just the new point
-    current_point = [((point.x, point.y), point.label)]
-    o_masks = predictor.predict([(point.x, point.y)], point.label, multi_object)
-    
-    if o_masks:
-        # Save mask
-        masks.append(o_masks[0][0])
-        
-        # Update display image with new mask
-        display_image = overlay_mask(display_image, o_masks[0][0])
-    
-    # Draw all points
-    for px, py in points:
-        cv2.drawMarker(display_image, (px, py), (255, 0, 0), 
-                      markerType=1, markerSize=5, thickness=2)
+async def add_point(point: Point):
+    """
+        When user clicks on image we do segmentation on image 
+        and return the image.
+    """
+    global predictor, original_image, counter
+    counter += 1
+
+    # segment point
+    img = select_point(
+        predictor=predictor,
+        original_img=original_image,
+        display_img=display_image,
+        point=point,
+        counter=counter,
+    )
     
     return {
         "image": encode_image(display_image),
-        "mask": encode_image(o_masks[0][0] * 255) if o_masks else None
     }
 
 @app.post("/undo")
