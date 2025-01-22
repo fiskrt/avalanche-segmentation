@@ -4,6 +4,9 @@ import numpy as np
 import torch
 from segment_anything import SamPredictor, sam_model_registry
 
+from sam2.build_sam import build_sam2
+from sam2.sam2_image_predictor import SAM2ImagePredictor
+
 models = {
   'vit_b': './checkpoints/sam_vit_b_01ec64.pth',
   'vit_l': './checkpoints/sam_vit_l_0b3195.pth',
@@ -11,7 +14,7 @@ models = {
 }
 
 
-def get_sam_predictor(model_type='vit_h', device=None, image=None):
+def get_sam_predictor_v1(model_type='vit_h', device=None, image=None):
   if device is None and torch.cuda.is_available():
     device = 'cuda'
   elif device is None:
@@ -25,13 +28,18 @@ def get_sam_predictor(model_type='vit_h', device=None, image=None):
     predictor.set_image(image)
   return predictor
 
+def get_sam_predictor(device=None, image=None):
+  sam2_checkpoint = "../checkpoints/sam2.1_hiera_large.pt"
+  model_cfg = "configs/sam2.1/sam2.1_hiera_l.yaml"
+  sam2_model = build_sam2(model_cfg, sam2_checkpoint, device=device)
+
+  predictor = SAM2ImagePredictor(sam2_model)
+  if image is not None:
+    predictor.set_image(image)
+  return predictor
 
 def run_inference(predictor: SamPredictor, input_x, selected_points,
                   multi_object: bool = False):
-  # Process the image to produce an image embedding
-  # points
-  # fg_points = [p for p, l in selected_points if l == 1]
-  # bg_points = [p for p, l in selected_points if l == 0]
   if len(selected_points) == 0:
     return []
   points = torch.Tensor(
@@ -42,15 +50,14 @@ def run_inference(predictor: SamPredictor, input_x, selected_points,
       [int(l) for _, l in selected_points]
   ).to(predictor.device).unsqueeze(1)
 
-  transformed_points = predictor.transform.apply_coords_torch(
-      points, input_x.shape[:2])
-  # print(transformed_points.shape)
   # predict segmentation according to the boxes
-  masks, scores, logits = predictor.predict_torch(
-    point_coords=transformed_points,
+  masks, scores, logits = predictor.predict(
+    point_coords=points,
     point_labels=labels,
     multimask_output=True,
   )
+  masks = torch.tensor(masks).unsqueeze(0)
+  scores = torch.tensor(scores).unsqueeze(0)
 
   masks = masks[:, torch.argmax(scores, dim=1)]
   masks_pos = masks[labels[:, 0] == 1, 0].cpu().detach().numpy()
@@ -62,7 +69,6 @@ def run_inference(predictor: SamPredictor, input_x, selected_points,
       masks_pos = np.zeros_like(masks_neg)
     masks_neg = masks_neg.max(axis=0, keepdims=True)
     masks_pos = masks_pos.max(axis=0, keepdims=True)
-    # TODO(itdfh): When a negative mask is too small, this becomes a problem.
     masks = (masks_pos.astype(int) - masks_neg.astype(int)).clip(0, 1)
   else:
     masks = np.concatenate([masks_pos, masks_neg], axis=0)
