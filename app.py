@@ -133,9 +133,8 @@ with gr.Blocks() as demo:
   with gr.Row():
     with gr.Column():
       # input image
-      input_image = gr.Image(type="numpy", label='Input image')
+      input_image = gr.Image(type="numpy", label='Input image', height=600)
       # Set height of widget to 500 pixels
-      input_image.style(height=600)
       with gr.Accordion(label="Image options"):
         with gr.Row():
           rgb_checkbox_group = gr.CheckboxGroup(
@@ -162,18 +161,17 @@ with gr.Blocks() as demo:
               ['Multi-object'],
               info="Whether each point correspond to a single object?",
               label='Multi-object',
-              default=False
           )
       gr.Markdown('You can click on the image to select points prompt. '
                   'Default: `foreground_point`.')
 
     # show only mask
     with gr.Column():
-      output_mask = gr.AnnotatedImage(show_progress='minimal')
+      output_mask = gr.AnnotatedImage()
       output_file = gr.File(
           label='Save output mask',
           interactive=False,
-          description='Save output mask to local file system.')
+          )
 
   input_image.upload(
       reset_image,
@@ -208,4 +206,4 @@ with gr.Blocks() as demo:
       [input_image, output_mask, output_file])
 
 
-demo.queue().launch(debug=True, enable_queue=True)
+demo.queue().launch(debug=True)
