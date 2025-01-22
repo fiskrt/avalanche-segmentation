@@ -119,7 +119,7 @@ export default function Home() {
     const y = Math.round((event.clientY - rect.top) * scaleY);
 
     setClickCoordinates({ x, y });
-    console.log(`Clicked at: ${x}px, ${y}px on original image`);
+    console.log(`Clicked at: ${x}, ${y} on original image`);
 
 
     // send the coordinates to the backend
@@ -128,10 +128,16 @@ export default function Home() {
       formData.append('file', uploadedImage);
     }
 
-
-    const response = await fetch(`${BACKEND_URI}/image-to-sam/`, {
+    // pass only the x,y coordinates (as int!!)
+    const response = await fetch(`${BACKEND_URI}/add_point/`, {
       method: 'POST',
-      body: formData,
+      headers: {
+        'Content-Type': 'application/json', // Indicate the payload is JSON
+      },
+      body: JSON.stringify({
+        x: x, // Ensure x is an integer
+        y: y  // Ensure y is an integer
+      }),
     });
 
     if (!response.ok) {

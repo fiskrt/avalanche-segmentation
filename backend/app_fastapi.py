@@ -10,7 +10,7 @@ from classifiers import predict_avalanche_type, predict_spam
 from inference import get_sam_predictor 
 import base64
 import io
-from sam import select_point
+from sam_utils import select_point
 
 app = FastAPI()
 
@@ -58,9 +58,6 @@ def overlay_mask(image: np.ndarray, mask: np.ndarray, alpha: float = 0.5):
 @app.post("/spamcheck")
 async def spam_classify_image(file: UploadFile = File(...)):
     try:
-        # Ensure the uploaded file is an image
-        if not file.content_type.startswith("image/"):
-            raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image.")
 
         # Read image file
         image_data = await file.read()
@@ -71,7 +68,7 @@ async def spam_classify_image(file: UploadFile = File(...)):
         # If image is not spam we save it and add it to predictor
         if predicted_class != 0:
             global predictor, original_image
-            original_image=image
+            original_image=np.array(image)
             predictor = get_sam_predictor(device='cpu', image=original_image)
 
         # return true or false
@@ -102,23 +99,6 @@ async def classify_avalanche_type(file: UploadFile = File(...)):
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
-
-@app.post("/upload")
-async def upload_image(file: UploadFile = File(...)):
-    # We save the image in a global variable
-    # we set the image to SAM model predictor.set_image(img)
-    global original_image
-    
-    # Read and process image
-    contents = await file.read()
-    nparr = np.frombuffer(contents, np.uint8)
-    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    current_image = img.copy()
-    display_image = img.copy()
-    predictor.set_image(current_image)
-    
-    return {"image": encode_image(display_image)}
-
 @app.post("/add_point")
 async def add_point(point: Point):
     """
@@ -128,11 +108,12 @@ async def add_point(point: Point):
     global predictor, original_image, counter
     counter += 1
 
+
     # segment point
     img = select_point(
         predictor=predictor,
         original_img=original_image,
-        display_img=display_image,
+        display_img=original_image,
         point=point,
         counter=counter,
     )

@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 from inference import run_inference
 from typing import List
-from backend import Point
 import os
 
 def save_masks(o_masks, counter):
@@ -18,6 +17,7 @@ def save_masks(o_masks, counter):
 def overlay_mask(image: np.ndarray, mask: np.ndarray, alpha: float = 0.5):
     """Overlay mask on image with transparency."""
     overlay = image.copy()
+
     if mask.any():
         overlay[mask > 0] = [255, 0, 0]  # Red overlay for mask
     return cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
@@ -27,11 +27,14 @@ def select_point(
     predictor,
     original_img: np.ndarray,
     display_img: np.ndarray,
-    point: Point,
+    point,
     counter:int,
 ):
     """When user clicks on the image, show points and update the mask."""
+    point = [point.x, point.y]
     sel_pix = [(point, 1)]
+
+    print(point)
     
     # run inference on the original image
     o_masks = run_inference(predictor, original_img, sel_pix, [])
