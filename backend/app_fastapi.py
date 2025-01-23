@@ -57,6 +57,8 @@ def overlay_mask(image: np.ndarray, mask: np.ndarray, alpha: float = 0.5):
 
 @app.post("/spamcheck")
 async def spam_classify_image(file: UploadFile = File(...)):
+    global counter
+    counter = 0
     try:
 
         # Read image file

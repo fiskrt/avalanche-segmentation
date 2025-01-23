@@ -6,14 +6,8 @@ import torch
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 
-models = {
-  'vit_b': './checkpoints/sam_vit_b_01ec64.pth',
-  'vit_l': './checkpoints/sam_vit_l_0b3195.pth',
-  'vit_h': './checkpoints/sam_vit_h_4b8939.pth'
-}
-
 def get_sam_predictor(device=None, image=None):
-  sam2_checkpoint = "../checkpoints/sam2.1_hiera_large.pt"
+  sam2_checkpoint = "checkpoints/sam2.1_hiera_large.pt"
   model_cfg = "configs/sam2.1/sam2.1_hiera_l.yaml"
   sam2_model = build_sam2(model_cfg, sam2_checkpoint, device=device)
 
