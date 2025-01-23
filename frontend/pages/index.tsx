@@ -117,7 +117,7 @@ export default function Home() {
     const data = await response.json();
     console.log(data);
 
-    return data.distance, data.finalsize
+    return [data.distance, data.finalsize];
   }
   const possibleavalancheTypes = [
     "none",
@@ -253,7 +253,7 @@ export default function Home() {
     }
 
     const possibleAvalancheSize = await predictAvalancheSize(file);
-    setDistance(possibleAvalancheSize);
+    setDistance(possibleAvalancheSize[0]);
     setFinalSize(possibleAvalancheSize[1]);
   };
 
@@ -415,11 +415,11 @@ export default function Home() {
                     </p>
                     <span className="text-blue-400">{avalancheType}</span>
                   </div>
-                  <div className="relative text-center flex justify-center items-center">
+                  {/*  <div className="relative text-center flex justify-center items-center">
                     <p className="mb-0 mr-2 text-gray-700 font-bold">
                       Our model predicted Avalanche Size as {finalSize} m^2 (distance to camera is {distance} m)
                     </p>
-                  </div>
+                  </div> */}
 
                   <div className="relative text-center flex justify-center items-center">
 
