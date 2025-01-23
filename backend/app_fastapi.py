@@ -108,7 +108,6 @@ async def add_point(point: Point):
     global predictor, original_image, counter
     counter += 1
 
-
     # segment point
     img = select_point(
         predictor=predictor,
@@ -119,7 +118,7 @@ async def add_point(point: Point):
     )
     
     return {
-        "image": encode_image(display_image),
+        "image": encode_image(img),
     }
 
 @app.post("/undo")

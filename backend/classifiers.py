@@ -23,7 +23,7 @@ try:
         nn.Dropout(0.5),
         nn.Linear(256, 2)  # 2 classes: avalanche / no avalanche
     )
-    binary_model.load_state_dict(torch.load("../checkpoints/best_avalanche_model.pth", map_location=torch.device('cpu')))
+    binary_model.load_state_dict(torch.load("checkpoints/best_avalanche_model.pth", map_location=torch.device('cpu')))
     binary_model.eval()
 except FileNotFoundError:
     raise RuntimeError("Model file 'resnet_model.pth' not found. Ensure it is in the current directory.")
@@ -44,7 +44,7 @@ try:
         nn.Dropout(0.5),
         nn.Linear(256, 4)  # 2 classes: avalanche / no avalanche
     )
-    avalanchetype_model.load_state_dict(torch.load("../checkpoints/best_avalanche_multiclass_model.pth", map_location=torch.device('cpu')))
+    avalanchetype_model.load_state_dict(torch.load("checkpoints/best_avalanche_multiclass_model.pth", map_location=torch.device('cpu')))
     avalanchetype_model.eval()
 except FileNotFoundError:
     raise RuntimeError("Model file 'resnet_model.pth' not found. Ensure it is in the current directory.")

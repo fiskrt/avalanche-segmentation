@@ -33,8 +33,6 @@ def select_point(
     """When user clicks on the image, show points and update the mask."""
     point = [point.x, point.y]
     sel_pix = [(point, 1)]
-
-    print(point)
     
     # run inference on the original image
     o_masks = run_inference(predictor, original_img, sel_pix, [])
