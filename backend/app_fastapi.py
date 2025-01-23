@@ -11,6 +11,11 @@ from inference import get_sam_predictor
 import base64
 import io
 from sam_utils import select_point,overlay
+import shutil
+import os
+from helpers import *
+
+
 
 app = FastAPI()
 
@@ -30,6 +35,9 @@ predictor = None
 original_image = None
 # keeps track of how many masks there are in the image
 counter = 0
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMP_DIR = os.path.join(SCRIPT_DIR, 'temp')
+print(TEMP_DIR)
 
 class Point(BaseModel):
     x: int
@@ -57,9 +65,12 @@ def overlay_mask(image: np.ndarray, mask: np.ndarray, alpha: float = 0.5):
 
 @app.post("/spamcheck")
 async def spam_classify_image(file: UploadFile = File(...)):
-    global counter
-    counter = 0
     try:
+
+        global counter
+        shutil.rmtree(TEMP_DIR, ignore_errors=True)
+        os.makedirs(TEMP_DIR, exist_ok=True)
+        counter = 0
 
         # Read image file
         image_data = await file.read()
@@ -77,8 +88,10 @@ async def spam_classify_image(file: UploadFile = File(...)):
         return JSONResponse(content={"spam": predicted_class == 0})
 
     except HTTPException as e:
+        print(e)
         return JSONResponse(content={"error": e.detail}, status_code=e.status_code)
     except Exception as e:
+        print(e)
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
@@ -100,6 +113,46 @@ async def classify_avalanche_type(file: UploadFile = File(...)):
         return JSONResponse(content={"error": e.detail}, status_code=e.status_code)
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.post("/estimate_avalanche_size")
+async def estimate_avalanche_size():
+    image_path = './../images/avalanche.jpeg'
+    
+    ## EXAMPLE: ESTIMATION OF AVALANCHE SIZE
+    camera_name = 'Xiaomi 11 Pro'
+    latitude, longitude, focal_length = get_exif_data(image_path)
+    sensor_size = get_sensor_size(camera_name)
+    # Example positions (already given in the problem)
+    photoposition = [2684500, 1173301]
+    avalancheposition = [2684458, 1173135]
+
+    # Add elevations for both positions
+    photoposition.append(get_elevation(photoposition[0], photoposition[1]))
+    avalancheposition.append(get_elevation(avalancheposition[0], avalancheposition[1]))
+
+    # Check if elevations are valid before proceeding
+    if photoposition[2] is None or avalancheposition[2] is None:
+        print("Error: Unable to retrieve elevation data.")
+    else:
+        # Compute steepness angles for the avalanche position (and optionally for the photo position too)
+        (angle_east_avalanche, angle_north_avalanche) = compute_steepness_angles(avalancheposition[0], avalancheposition[1], delta=5, sr=None)
+        (angle_east_photo, angle_north_photo) = compute_steepness_angles(photoposition[0], photoposition[1], delta=5, sr=None)
+
+        # Compute the 3D distance between the two positions (easting, northing, elevation)
+        distance = compute_3d_distance(photoposition[0], photoposition[1], photoposition[2], avalancheposition[0], avalancheposition[1], avalancheposition[2])
+
+        # Compute the angle differences (angles between observer and avalanche)
+        angle_east_diff = angle_east_avalanche - angle_east_photo
+        angle_north_diff = angle_north_avalanche - angle_north_photo
+        
+    #mask = getSamSegmentation(image_path)
+    mask = 0.3
+    finalsize = computeAvalancheSize(mask, distance, focal_length, sensor_size, (angle_east_diff,angle_north_diff))
+    print(f"The distance is {distance} and the estimated size id {finalsize} square meters")
+    return JSONResponse(content={"distance": distance, "finalsize": finalsize})
+    
+
 
 @app.post("/add_point")
 async def add_point(point: Point):

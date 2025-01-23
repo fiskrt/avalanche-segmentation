@@ -2,6 +2,7 @@ import { BACKEND_URI } from '@/config';
 import { useRouter } from 'next/router';
 import { useRef, useState } from "react";
 
+
 interface UploadedPage {
   id: number;
   description: string;
@@ -37,12 +38,24 @@ export default function Home() {
   const [isSpamCheckComplete, setIsSpamCheckComplete] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<File | null>(null);
   const [avalancheType, setAvalancheType] = useState<string | null>(null);
+  const [showUndo, setShowUndo] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [distance, setDistance] = useState(0);
+  const [finalSize, setFinalSize] = useState(0);
+  const [originalImgUrl, setOriginalImgUrl] = useState("");
+
+  const handleShowToast = () => {
+    setShowToast(true);
+    setSubmitted(true);
+  };
 
 
   // Add these handler functions before the return statement
   const handleImageApprove = () => {
     setIsImageApproved(true);
     setClickCoordinates(null); // Reset any existing click coordinates
+    setIsGenerated(true);
   };
 
   const handleImageReject = () => {
@@ -88,6 +101,23 @@ export default function Home() {
     console.log(avalancheType);
     return avalancheType;
 
+  }
+  const predictAvalancheSize = async (file: File) => {
+    // send the coordinates to the backend
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${BACKEND_URI}/estimate_avalanche_size/`, {
+      method: 'POST',
+      //body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to upload files');
+    }
+    const data = await response.json();
+    console.log(data);
+
+    return data.distance, data.finalsize
   }
   const possibleavalancheTypes = [
     "none",
@@ -148,7 +178,32 @@ export default function Home() {
 
     // Assuming `data.image` is the Base64 encoded image string
     if (data.image) {
-      const base64Image = `data:image/png;base64,${data.image}`;
+      const base64Image = `data:image/jpeg;base64,${data.image}`;
+      setPreviewUrl(base64Image); // Update the preview image URL
+    } else {
+      throw new Error('Invalid image data received');
+    }
+
+    // set the undo button to true
+    setShowUndo(true);
+    // here i get the image
+  };
+
+  const handleUndoClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
+
+    const response = await fetch(`${BACKEND_URI}/undo/`, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to upload files');
+    }
+    const data = await response.json();
+    console.log(data);
+
+    // Assuming `data.image` is the Base64 encoded image string
+    if (data.image) {
+      const base64Image = `data:image/jpeg;base64,${data.image}`;
       setPreviewUrl(base64Image); // Update the preview image URL
     } else {
       throw new Error('Invalid image data received');
@@ -171,6 +226,12 @@ export default function Home() {
 
     // Create preview URL
     const file = files[0];
+
+    // set original url
+    const file_name = file.name;
+    setOriginalImgUrl(file_name);
+    console.log(originalImgUrl);
+
     const preview = URL.createObjectURL(file);
     setPreviewUrl(preview);
     const spamCheckResult = await checkIfSpam(file);
@@ -191,52 +252,13 @@ export default function Home() {
       setAvalancheType(possibleAvalancheType);
     }
 
-
-    try {
-      // Simulate API response to check spam image
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
-      const fakeData = [{
-        description: "",
-        image: preview
-      }];
-
-      console.log("hi");
-
-      //if image is spam, return is spam
-
-
-      setProcessedImages(fakeData);
-
-      const pages = fakeData.map((item: ProcessedImage, index: number) => ({
-        id: index + 1,
-        description: item.description,
-        image: item.image,
-      }));
-
-      setGeneratedPages(pages);
-    } catch (error) {
-      console.error('Error uploading files:', error);
-      alert('Failed to upload files. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    const possibleAvalancheSize = await predictAvalancheSize(file);
+    setDistance(possibleAvalancheSize);
+    setFinalSize(possibleAvalancheSize[1]);
   };
 
   const handleGoToEditor = async () => {
-    if (!isGenerated || generatedPages.length === 0) return;
-
-    try {
-      router.push({
-        pathname: '/editor',
-        query: {
-          pages: JSON.stringify(generatedPages),
-        }
-      });
-    } catch (error) {
-      console.error('Error navigating to editor:', error);
-      alert('Failed to navigate to editor. Please try again.');
-    }
+    setShowToast(true);
   };
 
   return (
@@ -253,7 +275,7 @@ export default function Home() {
             <h4 className="text-2xl font-bold text-gray-800">
               {previewUrl ? "Uploaded Image" : "Upload your image here 📄"}
             </h4>
-            {previewUrl && (
+            {previewUrl && !isLoading && (
               <p className='text-xl font-bold text-gray-800'>Preview</p>
             )}
 
@@ -302,10 +324,37 @@ export default function Home() {
                       className="max-w-full h-auto rounded-lg shadow-md cursor-crosshair"
                       onClick={isImageApproved === false ? handleImageClick : undefined}
                     />
-                    {clickCoordinates && isImageApproved === false && (
-                      <p>
-                        Clicked at: {clickCoordinates.x}px, {clickCoordinates.y}px </p>
+                    {clickCoordinates && isImageApproved === false && showUndo && (
+                      <div className="flex justify-center items-center mt-4">
+                        <div className="flex space-x-4">
+                          <button
+                            onClick={handleUndoClick}
+                            className={`
+                            px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-200
+                            flex items-center gap-2
+                            bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg hover:opacity-90 hover:shadow-red-200/50 shadow-red-200/30
+                          `}
+                          >
+                            Undo
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsImageApproved(true);
+                              setIsGenerated(true);
+                            }}
+                            className={`
+                            px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-200
+                            flex items-center gap-2
+                            bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg hover:opacity-90 hover:shadow-green-200/50 shadow-green-200/30
+                          `}
+                          >
+                            Approve
+                          </button>
+                        </div>
+                      </div>
+
                     )}
+
                   </div>
 
                   {isImageApproved === null && (
@@ -326,11 +375,10 @@ export default function Home() {
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                        Reject Image
+                        Segment
                       </button>
                     </div>
                   )}
-
                   {isImageApproved === false && (
                     <p className="text-sm text-gray-600">Click on the image to mark the problematic area</p>
                   )}
@@ -366,6 +414,11 @@ export default function Home() {
                       Our model predicted Avalanche type as
                     </p>
                     <span className="text-blue-400">{avalancheType}</span>
+                  </div>
+                  <div className="relative text-center flex justify-center items-center">
+                    <p className="mb-0 mr-2 text-gray-700 font-bold">
+                      Our model predicted Avalanche Size as {finalSize} m^2 (distance to camera is {distance} m)
+                    </p>
                   </div>
 
                   <div className="relative text-center flex justify-center items-center">
@@ -463,28 +516,31 @@ export default function Home() {
 
             <div className="py-4">
               <p className={`text-lg font-medium ${isGenerated ? 'text-green-600' : 'text-gray-600'}`}>
-                {!isLoading && !isGenerated && "Please upload a file to continue"}
+                {!uploadedImage && "Please upload a file to continue"}
                 {isLoading && "Processing..."}
-                {isGenerated && "Generation complete! 🚀"}
               </p>
             </div>
 
             <div className="flex justify-center gap-4">
               <button
-                onClick={handleGoToEditor}
-                disabled={!isGenerated || isLoading}
+                onClick={handleShowToast}
+                disabled={!isGenerated || submitted}
                 className={`
                   px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-200
                   flex items-center gap-2
-                  ${!isGenerated || isLoading
+                  ${!isGenerated || isLoading || submitted
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-75 shadow-none'
                     : 'bg-gradient-to-r from-violet-600 to-blue-500 text-white shadow-lg hover:opacity-90 hover:shadow-violet-200/50 shadow-violet-200/30'
                   }
                 `}
               >
-                <span>📝</span>
-                Go to Editor
+                Submit!
               </button>
+              {showToast && (
+                <p className="mt-4 text-green-500 font-semibold">
+                  Successfully submitted! ✅
+                </p>
+              )}
             </div>
           </div>
         </div>

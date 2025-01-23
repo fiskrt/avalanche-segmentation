@@ -4,12 +4,20 @@ from inference import run_inference
 from typing import List
 import os
 from PIL import Image
+import os
+from inference import run_inference
+from typing import List
+
+# Create temp directory in the same directory as the script
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMP_DIR = os.path.join(SCRIPT_DIR, 'temp')
+os.makedirs(TEMP_DIR, exist_ok=True)
 
 def save_masks(o_masks, counter):
     o_files = []
     for mask, name in o_masks:
         o_mask = np.uint8(mask * 255)
-        o_file = os.path.join('temp', name) + str(counter) + '.png'
+        o_file = os.path.join(TEMP_DIR, f'{name}{counter}.png')
         cv2.imwrite(o_file, o_mask)
         o_files.append(o_file)
     return o_files
@@ -47,18 +55,16 @@ def select_point(
     o_files = save_masks(o_masks, counter=counter)
     img = overlay(img, counter)
     return img
-  
+
 def overlay(image, count: int):
-    # loop through masks in temp from 0 to count,
-    # and overlay each
     image = image.copy()
     for c in range(count):
-        o_file = f"temp/mask_0{c}.png"  # Construct the mask file path
-        mask = Image.open(o_file).convert("L")
-        mask = np.array(mask)
-        image = overlay_mask(image, mask)
+        o_file = os.path.join(TEMP_DIR, f'mask_0{c}.png')
+        if os.path.exists(o_file):
+            mask = Image.open(o_file).convert("L")
+            mask = np.array(mask)
+            image = overlay_mask(image, mask)
     return image
-
 
 def undo_points(predictor, orig_img, display_img, multi_object, sel_pix):
     global counter
