@@ -84,7 +84,9 @@ def undo_points(predictor, orig_img, display_img, multi_object, sel_pix):
     return img 
 
 def reset_image(predictor, img):
+    global counter
     counter = 0
+    gr.Info('reset counter!')
     preprocessed_image = img.copy()
     # Store original image for inference but set preprocessed for display
     predictor.set_image(img)  # Set the original image for inference

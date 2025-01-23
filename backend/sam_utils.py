@@ -3,6 +3,7 @@ import numpy as np
 from inference import run_inference
 from typing import List
 import os
+from PIL import Image
 
 def save_masks(o_masks, counter):
     o_files = []
@@ -14,7 +15,7 @@ def save_masks(o_masks, counter):
     return o_files
 
 
-def overlay_mask(image: np.ndarray, mask: np.ndarray, alpha: float = 0.5):
+def overlay_mask(image: np.ndarray, mask: np.ndarray, alpha: float = 0.6):
     """Overlay mask on image with transparency."""
     overlay = image.copy()
 
@@ -26,19 +27,18 @@ def overlay_mask(image: np.ndarray, mask: np.ndarray, alpha: float = 0.5):
 def select_point(
     predictor,
     original_img: np.ndarray,
-    display_img: np.ndarray,
     point,
     counter:int,
 ):
     """When user clicks on the image, show points and update the mask."""
     point = [point.x, point.y]
     sel_pix = [(point, 1)]
-    
+    input_img = original_img.copy() 
     # run inference on the original image
-    o_masks = run_inference(predictor, original_img, sel_pix, [])
+    o_masks = run_inference(predictor, input_img, sel_pix, [])
     
     # Create visualization on the display image
-    img = display_img.copy()
+    img = original_img.copy()
     # Draw the mask
     if o_masks:
         mask = o_masks[0][0]  # Get first mask
@@ -53,9 +53,9 @@ def overlay(image, count: int):
     # and overlay each
     image = image.copy()
     for c in range(count):
-        o_file = os.path.join('temp', 'mask_0') + str(c) + '.png'
-        mask = cv2.imread(o_file)
-        mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+        o_file = f"temp/mask_0{c}.png"  # Construct the mask file path
+        mask = Image.open(o_file).convert("L")
+        mask = np.array(mask)
         image = overlay_mask(image, mask)
     return image
 
