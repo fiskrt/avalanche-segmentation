@@ -10,7 +10,7 @@ from classifiers import predict_avalanche_type, predict_spam
 from inference import get_sam_predictor 
 import base64
 import io
-from sam_utils import select_point
+from sam_utils import select_point,overlay
 
 app = FastAPI()
 
@@ -126,9 +126,8 @@ async def undo():
     global original_image, counter
     counter -= 1
 
-
-    
-    return {"image": encode_image(display_image)}
+    img = overlay(original_image, count=counter)
+    return {"image": encode_image(img)}
 
 if __name__ == "__main__":
     import uvicorn
