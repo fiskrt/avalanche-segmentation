@@ -106,7 +106,6 @@ async def add_point(point: Point):
         and return the image.
     """
     global predictor, original_image, counter
-    counter += 1
 
     # segment point
     img = select_point(
@@ -117,31 +116,17 @@ async def add_point(point: Point):
         counter=counter,
     )
     
+    counter += 1
     return {
         "image": encode_image(img),
     }
 
 @app.post("/undo")
 async def undo():
-    global display_image, masks, points
-    
-    if points:
-        # Remove last point and mask
-        points.pop()
-        if masks:
-            masks.pop()
-        
-        # Recreate display image from scratch
-        display_image = current_image.copy()
-        
-        # Redraw all masks
-        for mask in masks:
-            display_image = overlay_mask(display_image, mask)
-        
-        # Redraw all points
-        for px, py in points:
-            cv2.drawMarker(display_image, (px, py), (255, 0, 0), 
-                          markerType=1, markerSize=5, thickness=2)
+    global original_image, counter
+    counter -= 1
+
+
     
     return {"image": encode_image(display_image)}
 
