@@ -2,7 +2,7 @@
 
 ## Overview
 
-This web application is designed to improve the accuracy and reliability of public avalanche reporting by addressing key challenges in existing reporting systems.
+Web application designed to improve the accuracy and reliability of public avalanche reporting.
 
 ## Problem Statement
 
@@ -63,15 +63,16 @@ Current public avalanche reporting tools face several significant challenges:
 ## Installation
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.10+
 - Node.js 14+
 - pip
 - npm/yarn
 
 ### Backend Setup
+Make sure you have the `uv` package manager.
 ```bash
 cd backend
-pip install -r requirements.txt
+uv sync
 python app_fastapi.py
 ```
 
