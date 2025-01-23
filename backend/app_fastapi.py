@@ -113,12 +113,12 @@ async def add_point(point: Point):
     img = select_point(
         predictor=predictor,
         original_img=original_image,
-        display_img=original_image,
         point=point,
         counter=counter,
     )
     
     counter += 1
+    img = img[:,:,[2,1,0]]
     return {
         "image": encode_image(img),
     }
@@ -129,6 +129,7 @@ async def undo():
     counter -= 1
 
     img = overlay(original_image, count=counter)
+    img = img[:,:,[2,1,0]]
     return {"image": encode_image(img)}
 
 if __name__ == "__main__":
