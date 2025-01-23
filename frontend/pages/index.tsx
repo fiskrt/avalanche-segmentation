@@ -145,6 +145,15 @@ export default function Home() {
     }
     const data = await response.json();
     console.log(data);
+
+    // Assuming `data.image` is the Base64 encoded image string
+    if (data.image) {
+      const base64Image = `data:image/png;base64,${data.image}`;
+      setPreviewUrl(base64Image); // Update the preview image URL
+    } else {
+      throw new Error('Invalid image data received');
+    }
+    // here i get the image
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
