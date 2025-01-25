@@ -120,7 +120,7 @@ async def estimate_avalanche_size():
     image_path = './../images/avalanche.jpeg'
     
     ## EXAMPLE: ESTIMATION OF AVALANCHE SIZE
-    camera_name = 'Xiaomi 11 Pro'
+    camera_name = 'Apple iPhone 11'
     latitude, longitude, focal_length = get_exif_data(image_path)
     sensor_size = get_sensor_size(camera_name)
     # Example positions (already given in the problem)

@@ -372,9 +372,6 @@ export default function Home() {
                         onClick={handleImageReject}
                         className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
                         Segment
                       </button>
                     </div>
@@ -415,11 +412,11 @@ export default function Home() {
                     </p>
                     <span className="text-blue-400">{avalancheType}</span>
                   </div>
-                  {/*  <div className="relative text-center flex justify-center items-center">
+                  <div className="relative text-center flex justify-center items-center">
                     <p className="mb-0 mr-2 text-gray-700 font-bold">
-                      Our model predicted Avalanche Size as {finalSize} m^2 (distance to camera is {distance} m)
+                      Our model predicted Avalanche Size as {finalSize.toFixed(2)} m^2 (distance to camera is {distance.toFixed(2)} m)
                     </p>
-                  </div> */}
+                  </div>
 
                   <div className="relative text-center flex justify-center items-center">
 
